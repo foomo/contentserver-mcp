@@ -1,11 +1,9 @@
-package main
+package mcp
 
 import (
 	"context"
 	"encoding/json"
-	"flag"
 	"fmt"
-	"log"
 
 	"github.com/foomo/contentserver-mcp/scrape"
 	"github.com/mark3labs/mcp-go/mcp"
@@ -21,12 +19,8 @@ type ScrapeResponse struct {
 	Markdown string `json:"markdown"` // The extracted content in markdown format
 }
 
-func main() {
-	// Define command line flags
-	stdioMode := flag.Bool("stdio", true, "Run in stdio mode")
-	httpAddr := flag.String("http", "", "HTTP server address (e.g., ':8080')")
-	flag.Parse()
-
+// NewServer creates a new MCP server with the scrape tool
+func NewServer() *server.MCPServer {
 	// Create a new MCP server
 	s := server.NewMCPServer(
 		"Content Scraper MCP",
@@ -50,30 +44,10 @@ func main() {
 	// Add tool handler
 	s.AddTool(tool, mcp.NewTypedToolHandler(scrapeHandler))
 
-	// Determine transport mode
-	if *httpAddr != "" {
-		// Start the HTTP server
-		log.Printf("Starting MCP server on HTTP address: %s", *httpAddr)
-		httpServer := server.NewStreamableHTTPServer(s)
-		if err := httpServer.Start(*httpAddr); err != nil {
-			log.Fatal(err)
-		}
-	} else if *stdioMode {
-		// Start the stdio server
-		log.Println("Starting MCP server in stdio mode...")
-		if err := server.ServeStdio(s); err != nil {
-			log.Fatal(err)
-		}
-	} else {
-		// Default to stdio mode if no flags provided
-		log.Println("Starting MCP server in stdio mode (default)...")
-		if err := server.ServeStdio(s); err != nil {
-			log.Fatal(err)
-		}
-	}
+	return s
 }
 
-// Our typed handler function that receives strongly-typed arguments
+// scrapeHandler is our typed handler function that receives strongly-typed arguments
 func scrapeHandler(ctx context.Context, request mcp.CallToolRequest, args ScrapeRequest) (*mcp.CallToolResult, error) {
 	// Validate inputs
 	if args.URL == "" {
