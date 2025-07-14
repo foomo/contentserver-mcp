@@ -16,6 +16,14 @@ A Model Context Protocol (MCP) server that provides a tool to scrape web content
 go build .
 ```
 
+## Package Structure
+
+The project is organized into reusable packages:
+
+- `mcp/` - MCP server implementation with scrape tool
+- `scrape/` - Web scraping functionality
+- `service/` - Service layer and value objects
+
 ## Usage
 
 ### Stdio Mode (Default)
@@ -124,6 +132,62 @@ go test ./...
 ```bash
 go build -o contentserver-mcp .
 ```
+
+## Reusing the MCP Package
+
+The MCP package can be reused in other projects. See the `examples/` directory for complete examples:
+
+### Simple HTTP Server
+```go
+package main
+
+import (
+    "flag"
+    "log"
+    "github.com/foomo/contentserver-mcp/mcp"
+    "github.com/mark3labs/mcp-go/server"
+)
+
+func main() {
+    port := flag.String("port", "8080", "HTTP server port")
+    flag.Parse()
+    
+    s := mcp.NewServer()
+    httpServer := server.NewStreamableHTTPServer(s)
+    
+    log.Printf("Starting MCP HTTP server on port %s...", *port)
+    if err := httpServer.Start(":" + *port); err != nil {
+        log.Fatal(err)
+    }
+}
+```
+
+### Advanced HTTP Server with Middleware
+```go
+package main
+
+import (
+    "net/http"
+    "github.com/foomo/contentserver-mcp/mcp"
+    "github.com/mark3labs/mcp-go/server"
+)
+
+func main() {
+    s := mcp.NewServer()
+    httpServer := server.NewStreamableHTTPServer(s)
+    
+    mux := http.NewServeMux()
+    mux.HandleFunc("/health", healthCheckHandler)
+    mux.Handle("/mcp", httpServer)
+    
+    // Add custom middleware
+    handler := loggingMiddleware(corsMiddleware(mux))
+    
+    http.ListenAndServe(":8080", handler)
+}
+```
+
+See `examples/` directory for complete working examples.
 
 ## License
 

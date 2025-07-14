@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/foomo/contentserver-mcp/scrape"
+	"github.com/foomo/contentserver-mcp/service/vo"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 )
@@ -16,7 +17,8 @@ type ScrapeRequest struct {
 }
 
 type ScrapeResponse struct {
-	Markdown string `json:"markdown"` // The extracted content in markdown format
+	Summary  *vo.DocumentSummary `json:"summary"`  // The extracted content in markdown format
+	Markdown string              `json:"markdown"` // The extracted content in markdown format
 }
 
 // NewServer creates a new MCP server with the scrape tool
@@ -58,13 +60,14 @@ func scrapeHandler(ctx context.Context, request mcp.CallToolRequest, args Scrape
 	}
 
 	// Call the scrape function
-	markdown, err := scrape.Scrape(ctx, args.URL, args.Selector)
+	summary, markdown, err := scrape.Scrape(ctx, args.URL, args.Selector)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("failed to scrape content: %v", err)), nil
 	}
 
 	// Create response
 	response := ScrapeResponse{
+		Summary:  summary,
 		Markdown: string(markdown),
 	}
 

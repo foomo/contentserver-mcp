@@ -9,7 +9,7 @@ import (
 )
 
 func TestScrape(t *testing.T) {
-	md, err := Scrape(context.Background(), "https://www.bestbytes.com/", "main")
+	summary, md, err := Scrape(context.Background(), "https://www.bestbytes.com/referenzen", "main")
 	require.NoError(t, err)
-	fmt.Println(md)
+	fmt.Println(summary, md)
 }

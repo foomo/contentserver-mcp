@@ -3,8 +3,9 @@ package vo
 type Markdown string
 
 type ContentSummary struct {
-	Title   string `json:"title"`   // Page title
-	Summary string `json:"summary"` // 2-3 sentence abstract
+	Title       string   `json:"title"`       // Page title
+	Description string   `json:"description"` // 2-3 sentence abstract
+	Keywords    []string `json:"keywords"`    // Keywords
 }
 
 type DocumentSummary struct {
@@ -19,8 +20,8 @@ type Article struct {
 }
 
 type Document struct {
-	DocumentSummary
-	Articles []Article `json:"articles,omitempty"`
+	DocumentSummary DocumentSummary
+	Articles        []Article `json:"articles,omitempty"`
 
 	Breadcrump   []DocumentSummary `json:"breadcrump,omitempty"`
 	Children     []DocumentSummary `json:"children,omitempty"` // Child page IDs

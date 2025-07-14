@@ -11,15 +11,15 @@ func TestDocument(t *testing.T) {
 		DocumentSummary: DocumentSummary{
 			URL: "/recipes/italian",
 			ContentSummary: ContentSummary{
-				Title:   "Italian Recipes",
-				Summary: "Discover authentic Italian cuisine with traditional recipes from pasta dishes to regional specialties.",
+				Title:       "Italian Recipes",
+				Description: "Discover authentic Italian cuisine with traditional recipes from pasta dishes to regional specialties.",
 			},
 		},
 		Articles: []Article{
 			{
 				ContentSummary: ContentSummary{
-					Title:   "Essential Italian Cooking Techniques",
-					Summary: "Master the fundamental techniques that define authentic Italian cuisine.",
+					Title:       "Essential Italian Cooking Techniques",
+					Description: "Master the fundamental techniques that define authentic Italian cuisine.",
 				},
 				Markdown: `# Italian Recipes
 
@@ -64,29 +64,29 @@ Explore the rich culinary traditions of Italy with our collection of authentic r
 			{
 				URL: "/recipes/italian/pasta-con-pommodori",
 				ContentSummary: ContentSummary{
-					Title:   "Pasta con Pomodori",
-					Summary: "A classic Italian pasta dish with fresh tomatoes, basil, and garlic. Simple yet delicious traditional recipe.",
+					Title:       "Pasta con Pomodori",
+					Description: "A classic Italian pasta dish with fresh tomatoes, basil, and garlic. Simple yet delicious traditional recipe.",
 				},
 			},
 			{
 				URL: "/recipes/italian/pasta-carbonara",
 				ContentSummary: ContentSummary{
-					Title:   "Pasta Carbonara",
-					Summary: "Classic Roman pasta with eggs, cheese, and pancetta.",
+					Title:       "Pasta Carbonara",
+					Description: "Classic Roman pasta with eggs, cheese, and pancetta.",
 				},
 			},
 			{
 				URL: "/recipes/italian/pasta-puttanesca",
 				ContentSummary: ContentSummary{
-					Title:   "Pasta Puttanesca",
-					Summary: "Bold pasta with olives, capers, and anchovies.",
+					Title:       "Pasta Puttanesca",
+					Description: "Bold pasta with olives, capers, and anchovies.",
 				},
 			},
 			{
 				URL: "/recipes/italian/margherita-pizza",
 				ContentSummary: ContentSummary{
-					Title:   "Pizza Margherita",
-					Summary: "Traditional Neapolitan pizza with tomato, mozzarella, and basil.",
+					Title:       "Pizza Margherita",
+					Description: "Traditional Neapolitan pizza with tomato, mozzarella, and basil.",
 				},
 			},
 		},
@@ -94,8 +94,8 @@ Explore the rich culinary traditions of Italy with our collection of authentic r
 			{
 				URL: "/recipes/french",
 				ContentSummary: ContentSummary{
-					Title:   "French Recipes",
-					Summary: "Classic French cuisine with sophisticated techniques and rich flavors.",
+					Title:       "French Recipes",
+					Description: "Classic French cuisine with sophisticated techniques and rich flavors.",
 				},
 			},
 		},
@@ -103,8 +103,8 @@ Explore the rich culinary traditions of Italy with our collection of authentic r
 			{
 				URL: "/recipes/spanish",
 				ContentSummary: ContentSummary{
-					Title:   "Spanish Recipes",
-					Summary: "Vibrant Spanish dishes from paella to tapas and Mediterranean flavors.",
+					Title:       "Spanish Recipes",
+					Description: "Vibrant Spanish dishes from paella to tapas and Mediterranean flavors.",
 				},
 			},
 		},
@@ -112,15 +112,15 @@ Explore the rich culinary traditions of Italy with our collection of authentic r
 			{
 				URL: "/",
 				ContentSummary: ContentSummary{
-					Title:   "Lifestyle Homepage",
-					Summary: "Your daily source for recipes, wellness tips, home decor, and lifestyle inspiration.",
+					Title:       "Lifestyle Homepage",
+					Description: "Your daily source for recipes, wellness tips, home decor, and lifestyle inspiration.",
 				},
 			},
 			{
 				URL: "/recipes",
 				ContentSummary: ContentSummary{
-					Title:   "Recipes",
-					Summary: "Collection of cooking recipes",
+					Title:       "Recipes",
+					Description: "Collection of cooking recipes",
 				},
 			},
 		},
