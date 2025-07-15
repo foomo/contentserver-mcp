@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/foomo/contentserver-mcp/scrape"
 	"github.com/foomo/contentserver-mcp/service/vo"
@@ -16,13 +17,11 @@ type Service interface {
 	GetDocument(w http.ResponseWriter, r *http.Request, path string) (*vo.Document, error)
 }
 
-type MimeType string
-
 type service struct {
 	contentServerClient *contentserverclient.Client
 	httpClient          *http.Client
 	siteSettings        SiteSettings
-	contentScrapers     map[MimeType]ContentScraper
+	contentScrapers     map[vo.MimeType]ContentScraper
 }
 
 type SiteContextService interface {
@@ -36,7 +35,7 @@ type SiteSettings struct {
 	ContentSelector  string
 	BaseURL          string
 	ContentServerURL string
-	MimeTypes        []MimeType
+	MimeTypes        []vo.MimeType
 }
 
 func (siteSettings SiteSettings) mimeTypes() []string {
@@ -50,7 +49,7 @@ func (siteSettings SiteSettings) mimeTypes() []string {
 func NewService(
 	siteSettings SiteSettings,
 	httpClient *http.Client,
-	contentScrapers map[MimeType]ContentScraper,
+	contentScrapers map[vo.MimeType]ContentScraper,
 ) Service {
 	if httpClient == nil {
 		httpClient = http.DefaultClient
@@ -67,6 +66,11 @@ func NewService(
 		contentServerClient: contentServerClient,
 		contentScrapers:     contentScrapers,
 	}
+}
+
+// isValidURI checks if a URI is valid for processing
+func isValidURI(uri string) bool {
+	return uri != "" && strings.HasPrefix(uri, "/")
 }
 
 func (s *service) GetDocument(w http.ResponseWriter, r *http.Request, path string) (*vo.Document, error) {
@@ -89,6 +93,9 @@ func (s *service) GetDocument(w http.ResponseWriter, r *http.Request, path strin
 	breadcrump := make([]vo.DocumentSummary, len(content.Path))
 
 	for i, item := range content.Path {
+		if !isValidURI(item.URI) {
+			continue
+		}
 		summary, _, err := scrape.Scrape(ctx, s.httpClient, s.siteSettings.BaseURL+item.URI, s.siteSettings.ContentSelector)
 		if err != nil {
 			return nil, err
@@ -101,14 +108,14 @@ func (s *service) GetDocument(w http.ResponseWriter, r *http.Request, path strin
 		return nil, err
 	}
 
-	contentScraper, ok := s.contentScrapers[MimeType(content.MimeType)]
+	contentScraper, ok := s.contentScrapers[vo.MimeType(content.MimeType)]
 	if ok {
 		markdown, err = contentScraper(ctx, s.httpClient, s.siteSettings, content)
 		if err != nil {
 			return nil, err
 		}
 	}
-
+	s.loadItemData(summary, content.Item)
 	doc := &vo.Document{
 		DocumentSummary: *summary,
 		Breadcrump:      breadcrump,
@@ -141,12 +148,15 @@ func (s *service) GetDocument(w http.ResponseWriter, r *http.Request, path strin
 			if !ok {
 				return nil, errors.New("sibling node not found")
 			}
+			if !isValidURI(siblingNode.Item.URI) {
+				continue
+			}
 
 			siblingSummary, _, err := scrape.Scrape(ctx, s.httpClient, s.siteSettings.BaseURL+siblingNode.Item.URI, s.siteSettings.ContentSelector)
 			if err != nil {
 				return nil, err
 			}
-
+			s.loadItemData(siblingSummary, siblingNode.Item)
 			if isPrevious {
 				doc.PrevSiblings = append(doc.PrevSiblings, *siblingSummary)
 			} else {
@@ -178,11 +188,14 @@ func (s *service) GetDocument(w http.ResponseWriter, r *http.Request, path strin
 		if err != nil {
 			return nil, err
 		}
+		s.loadItemData(childSummary, childNode.Item)
 		doc.Children = append(doc.Children, *childSummary)
 	}
-	// doc.Markdown, err = s.contentScraper(ctx, s.httpClient, s.siteSettings, content)
-	// if err != nil {
-	// 	return nil, err
-	// }
 	return doc, nil
+}
+
+func (s *service) loadItemData(d *vo.DocumentSummary, item *content.Item) {
+	d.MimeType = vo.MimeType(item.MimeType)
+	d.ID = item.ID
+	d.URL = s.siteSettings.BaseURL + item.URI
 }
