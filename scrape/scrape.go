@@ -12,14 +12,12 @@ import (
 	"golang.org/x/net/html"
 )
 
-func Scrape(ctx context.Context, url, selector string) (*vo.DocumentSummary, vo.Markdown, error) {
+func Scrape(ctx context.Context, client *http.Client, url, selector string) (*vo.DocumentSummary, vo.Markdown, error) {
 	// Download HTML from URL
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to create request: %w", err)
 	}
-
-	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to download HTML: %w", err)

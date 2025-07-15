@@ -15,13 +15,7 @@ func TestDocument(t *testing.T) {
 				Description: "Discover authentic Italian cuisine with traditional recipes from pasta dishes to regional specialties.",
 			},
 		},
-		Articles: []Article{
-			{
-				ContentSummary: ContentSummary{
-					Title:       "Essential Italian Cooking Techniques",
-					Description: "Master the fundamental techniques that define authentic Italian cuisine.",
-				},
-				Markdown: `# Italian Recipes
+		Markdown: `# Italian Recipes
 
 Explore the rich culinary traditions of Italy with our collection of authentic recipes. From classic pasta dishes to regional specialties, discover the flavors that make Italian cuisine beloved worldwide.
 
@@ -58,8 +52,6 @@ Explore the rich culinary traditions of Italy with our collection of authentic r
 - Northern Italy: Rich, buttery sauces and risotto
 - Central Italy: Simple, olive oil-based dishes
 - Southern Italy: Spicy, tomato-heavy preparations`,
-			},
-		},
 		Children: []DocumentSummary{
 			{
 				URL: "/recipes/italian/pasta-con-pommodori",

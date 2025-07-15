@@ -3,6 +3,7 @@ package mcp
 import (
 	"context"
 	"encoding/json"
+	"net/http"
 	"testing"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -10,7 +11,7 @@ import (
 
 func TestNewServer(t *testing.T) {
 	// Test that we can create a server
-	server := NewServer()
+	server := NewServer(http.DefaultClient)
 	if server == nil {
 		t.Fatal("NewServer() returned nil")
 	}
@@ -34,6 +35,7 @@ func TestScrapeHandler(t *testing.T) {
 	}
 
 	ctx := context.Background()
+	scrapeHandler := getScrapeHandler(http.DefaultClient)
 	result, err := scrapeHandler(ctx, request, args)
 	if err != nil {
 		t.Fatalf("scrapeHandler returned error: %v", err)
@@ -50,6 +52,7 @@ func TestScrapeHandler(t *testing.T) {
 }
 
 func TestScrapeHandlerValidation(t *testing.T) {
+	scrapeHandler := getScrapeHandler(http.DefaultClient)
 	// Test validation for missing URL
 	args := ScrapeRequest{
 		URL:      "",

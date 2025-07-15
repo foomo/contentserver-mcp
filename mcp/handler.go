@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 
 	"github.com/foomo/contentserver-mcp/scrape"
 	"github.com/foomo/contentserver-mcp/service/vo"
@@ -22,7 +23,10 @@ type ScrapeResponse struct {
 }
 
 // NewServer creates a new MCP server with the scrape tool
-func NewServer() *server.MCPServer {
+func NewServer(client *http.Client) *server.MCPServer {
+	if client == nil {
+		client = http.DefaultClient
+	}
 	// Create a new MCP server
 	s := server.NewMCPServer(
 		"Content Scraper MCP",
@@ -44,38 +48,40 @@ func NewServer() *server.MCPServer {
 	)
 
 	// Add tool handler
-	s.AddTool(tool, mcp.NewTypedToolHandler(scrapeHandler))
+	s.AddTool(tool, mcp.NewTypedToolHandler(getScrapeHandler(client)))
 
 	return s
 }
 
 // scrapeHandler is our typed handler function that receives strongly-typed arguments
-func scrapeHandler(ctx context.Context, request mcp.CallToolRequest, args ScrapeRequest) (*mcp.CallToolResult, error) {
-	// Validate inputs
-	if args.URL == "" {
-		return mcp.NewToolResultError("url is required"), nil
-	}
-	if args.Selector == "" {
-		return mcp.NewToolResultError("selector is required"), nil
-	}
+func getScrapeHandler(client *http.Client) func(ctx context.Context, request mcp.CallToolRequest, args ScrapeRequest) (*mcp.CallToolResult, error) {
+	return func(ctx context.Context, request mcp.CallToolRequest, args ScrapeRequest) (*mcp.CallToolResult, error) {
+		// Validate inputs
+		if args.URL == "" {
+			return mcp.NewToolResultError("url is required"), nil
+		}
+		if args.Selector == "" {
+			return mcp.NewToolResultError("selector is required"), nil
+		}
 
-	// Call the scrape function
-	summary, markdown, err := scrape.Scrape(ctx, args.URL, args.Selector)
-	if err != nil {
-		return mcp.NewToolResultError(fmt.Sprintf("failed to scrape content: %v", err)), nil
-	}
+		// Call the scrape function
+		summary, markdown, err := scrape.Scrape(ctx, client, args.URL, args.Selector)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("failed to scrape content: %v", err)), nil
+		}
 
-	// Create response
-	response := ScrapeResponse{
-		Summary:  summary,
-		Markdown: string(markdown),
-	}
+		// Create response
+		response := ScrapeResponse{
+			Summary:  summary,
+			Markdown: string(markdown),
+		}
 
-	// Convert response to JSON
-	responseBytes, err := json.Marshal(response)
-	if err != nil {
-		return mcp.NewToolResultError(fmt.Sprintf("failed to marshal response: %v", err)), nil
-	}
+		// Convert response to JSON
+		responseBytes, err := json.Marshal(response)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("failed to marshal response: %v", err)), nil
+		}
 
-	return mcp.NewToolResultText(string(responseBytes)), nil
+		return mcp.NewToolResultText(string(responseBytes)), nil
+	}
 }

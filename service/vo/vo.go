@@ -13,15 +13,15 @@ type DocumentSummary struct {
 	ContentSummary `json:"contentSummary"`
 }
 
-type Article struct {
-	Anchor string `json:"anchor,omitempty"` // Anchor text
-	ContentSummary
-	Markdown Markdown `json:"markdown,omitempty"` // Full content in markdown
-}
+// type Article struct {
+// 	Anchor string `json:"anchor,omitempty"` // Anchor text
+// 	ContentSummary
+// }
 
 type Document struct {
 	DocumentSummary DocumentSummary
-	Articles        []Article `json:"articles,omitempty"`
+	Markdown        Markdown `json:"markdown,omitempty"` // Full content in markdown
+	// 	Articles        []Article `json:"articles,omitempty"`
 
 	Breadcrump   []DocumentSummary `json:"breadcrump,omitempty"`
 	Children     []DocumentSummary `json:"children,omitempty"` // Child page IDs

@@ -1,0 +1,22 @@
+# define go module mode
+module:
+  name: github.com/foomo/contentserver-mcp
+  path: ./
+
+# build targets define for which interfaces code will be generated in a package
+targets:
+
+  # the key of a target is arbitrary and solely serves readability
+  mcpsupport:
+    # map of service path => interface ie which service will be exposed on
+    # which path
+    services:
+      /services/content: Service
+      /service/sitecontextprovider: SiteContextService
+    # go package
+    package: github.com/foomo/contentserver-mcp/service
+    # target file for TypeScript client generation    
+    # which services should be generated in the (go)TypeScript RPC flavor
+    tsrpc:
+      - Service
+      - SiteContextService

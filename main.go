@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"log"
+	"net/http"
 	"os"
 
 	"github.com/foomo/contentserver-mcp/mcp"
@@ -16,7 +17,7 @@ func main() {
 	flag.Parse()
 
 	// Create MCP server using the extracted package
-	s := mcp.NewServer()
+	s := mcp.NewServer(http.DefaultClient)
 
 	if *httpAddr != "" {
 		// Start the HTTP server
