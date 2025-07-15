@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/foomo/contentserver-mcp/scrape"
+	"github.com/foomo/contentserver-mcp/service"
 	"github.com/foomo/contentserver-mcp/service/vo"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
@@ -22,8 +23,16 @@ type ScrapeResponse struct {
 	Markdown string              `json:"markdown"` // The extracted content in markdown format
 }
 
-// NewServer creates a new MCP server with the scrape tool
-func NewServer(client *http.Client) *server.MCPServer {
+type GetDocumentRequest struct {
+	Path string `json:"path"` // The path to get the document for
+}
+
+type GetDocumentResponse struct {
+	Document *vo.Document `json:"document"` // The document with full structure
+}
+
+// NewServer creates a new MCP server with the scrape and getDocument tools
+func NewServer(client *http.Client, serviceInstance service.Service) *server.MCPServer {
 	if client == nil {
 		client = http.DefaultClient
 	}
@@ -35,7 +44,7 @@ func NewServer(client *http.Client) *server.MCPServer {
 	)
 
 	// Create the scrape tool
-	tool := mcp.NewTool("scrape",
+	scrapeTool := mcp.NewTool("scrape",
 		mcp.WithDescription("Scrape content from a webpage and convert it to markdown"),
 		mcp.WithString("url",
 			mcp.Required(),
@@ -47,8 +56,20 @@ func NewServer(client *http.Client) *server.MCPServer {
 		),
 	)
 
-	// Add tool handler
-	s.AddTool(tool, mcp.NewTypedToolHandler(getScrapeHandler(client)))
+	// Add scrape tool handler
+	s.AddTool(scrapeTool, mcp.NewTypedToolHandler(getScrapeHandler(client)))
+
+	// Add getDocument tool only if service is provided
+	if serviceInstance != nil {
+		getDocumentTool := mcp.NewTool("getDocument",
+			mcp.WithDescription("Get a document with full structure including breadcrumbs, siblings, and children"),
+			mcp.WithString("path",
+				mcp.Required(),
+				mcp.Description("The path to get the document for"),
+			),
+		)
+		s.AddTool(getDocumentTool, mcp.NewTypedToolHandler(getDocumentHandler(serviceInstance)))
+	}
 
 	return s
 }
@@ -74,6 +95,41 @@ func getScrapeHandler(client *http.Client) func(ctx context.Context, request mcp
 		response := ScrapeResponse{
 			Summary:  summary,
 			Markdown: string(markdown),
+		}
+
+		// Convert response to JSON
+		responseBytes, err := json.Marshal(response)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("failed to marshal response: %v", err)), nil
+		}
+
+		return mcp.NewToolResultText(string(responseBytes)), nil
+	}
+}
+
+// getDocumentHandler is our typed handler function for the getDocument tool
+func getDocumentHandler(serviceInstance service.Service) func(ctx context.Context, request mcp.CallToolRequest, args GetDocumentRequest) (*mcp.CallToolResult, error) {
+	return func(ctx context.Context, request mcp.CallToolRequest, args GetDocumentRequest) (*mcp.CallToolResult, error) {
+		// Validate inputs
+		if args.Path == "" {
+			return mcp.NewToolResultError("path is required"), nil
+		}
+
+		// Create a mock HTTP request with the context
+		req, err := http.NewRequestWithContext(ctx, "GET", "/", nil)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("failed to create request: %v", err)), nil
+		}
+
+		// Call the service to get the document
+		document, err := serviceInstance.GetDocument(nil, req, args.Path)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("failed to get document: %v", err)), nil
+		}
+
+		// Create response
+		response := GetDocumentResponse{
+			Document: document,
 		}
 
 		// Convert response to JSON

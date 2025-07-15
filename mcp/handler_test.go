@@ -11,7 +11,7 @@ import (
 
 func TestNewServer(t *testing.T) {
 	// Test that we can create a server
-	server := NewServer(http.DefaultClient)
+	server := NewServer(http.DefaultClient, nil)
 	if server == nil {
 		t.Fatal("NewServer() returned nil")
 	}

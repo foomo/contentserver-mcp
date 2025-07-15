@@ -17,7 +17,9 @@ func main() {
 	flag.Parse()
 
 	// Create MCP server using the extracted package
-	s := mcp.NewServer(http.DefaultClient)
+	// Note: Service parameter is nil, so only the scrape tool will be available
+	// To enable the getDocument tool, create a service instance and pass it here
+	s := mcp.NewServer(http.DefaultClient, nil)
 
 	if *httpAddr != "" {
 		// Start the HTTP server
