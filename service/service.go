@@ -123,7 +123,7 @@ func (s *service) GetDocument(w http.ResponseWriter, r *http.Request, path strin
 			l.Error("Failed to scrape breadcrumb item", zap.String("uri", item.URI), zap.Error(err))
 			return nil, err
 		}
-		summary.Name = item.Name
+		summary.ContentSummary.Name = item.Name
 		breadcrump[len(content.Path)-i-1] = *summary
 	}
 
@@ -256,6 +256,6 @@ func (s *service) GetDocument(w http.ResponseWriter, r *http.Request, path strin
 func (s *service) loadItemData(d *vo.DocumentSummary, item *content.Item) {
 	d.MimeType = vo.MimeType(item.MimeType)
 	d.ID = item.ID
-	d.Name = item.Name
+	d.ContentSummary.Name = item.Name
 	d.URL = s.siteSettings.BaseURL + item.URI
 }
