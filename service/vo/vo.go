@@ -4,6 +4,7 @@ type Markdown string
 
 type ContentSummary struct {
 	Title       string   `json:"title"`       // Page title
+	Name        string   `json:"name"`        // (short) name
 	Description string   `json:"description"` // 2-3 sentence abstract
 	Keywords    []string `json:"keywords"`    // Keywords
 }

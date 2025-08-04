@@ -13,6 +13,8 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 )
 
+const Version = "0.0.1"
+
 type ScrapeRequest struct {
 	URL      string `json:"url"`      // The URL to scrape
 	Selector string `json:"selector"` // CSS selector to extract content
@@ -39,7 +41,7 @@ func NewServer(client *http.Client, serviceInstance service.Service) *server.MCP
 	// Create a new MCP server
 	s := server.NewMCPServer(
 		"Content Scraper MCP",
-		"1.0.0",
+		Version,
 		server.WithToolCapabilities(false),
 	)
 
