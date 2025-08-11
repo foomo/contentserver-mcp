@@ -1,0 +1,10 @@
+.*
+*.log
+!.github/
+!.editorconfig
+!.gitignore
+!.golangci.yml
+!.goreleaser.yml
+/coverage.out
+/coverage.html
+/tmp/
