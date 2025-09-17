@@ -20,18 +20,20 @@ type Service interface {
 }
 
 type service struct {
-	l                   *zap.Logger
-	contentServerClient *contentserverclient.Client
-	httpClient          *http.Client
-	siteSettings        SiteSettings
-	contentScrapers     map[vo.MimeType]ContentScraper
+	l                    *zap.Logger
+	contentServerClient  *contentserverclient.Client
+	httpClient           *http.Client
+	siteSettings         SiteSettings
+	contentScrapers      map[vo.MimeType]ContentScraper
+	siteSettingsProvider SiteSettingsProvider
 }
 
 type SiteContextService interface {
-	GetContext(path string) (string, error)
+	GetContext(w http.ResponseWriter, r *http.Request, path string) (string, error)
 }
 
 type ContentScraper func(ctx context.Context, httpClient *http.Client, siteSettings SiteSettings, content *content.SiteContent) (vo.Markdown, error)
+type SiteSettingsProvider func(r *http.Request, originalSiteSettings SiteSettings) SiteSettings
 
 type SiteSettings struct {
 	Env              *requests.Env
@@ -54,6 +56,7 @@ func NewService(
 	siteSettings SiteSettings,
 	httpClient *http.Client,
 	contentScrapers map[vo.MimeType]ContentScraper,
+	siteSettingsProvider SiteSettingsProvider,
 ) Service {
 	if httpClient == nil {
 		httpClient = http.DefaultClient
@@ -65,11 +68,12 @@ func NewService(
 		))
 
 	return &service{
-		l:                   l,
-		siteSettings:        siteSettings,
-		httpClient:          httpClient,
-		contentServerClient: contentServerClient,
-		contentScrapers:     contentScrapers,
+		l:                    l,
+		siteSettings:         siteSettings,
+		httpClient:           httpClient,
+		contentServerClient:  contentServerClient,
+		contentScrapers:      contentScrapers,
+		siteSettingsProvider: siteSettingsProvider,
 	}
 }
 
@@ -78,6 +82,7 @@ func isValidURI(uri string) bool {
 	return uri != "" && strings.HasPrefix(uri, "/")
 }
 
+// GetDocument retrieves and processes a document from the content server
 func (s *service) GetDocument(w http.ResponseWriter, r *http.Request, path string) (*vo.Document, error) {
 	requestID := ""
 	if r != nil {
@@ -96,10 +101,16 @@ func (s *service) GetDocument(w http.ResponseWriter, r *http.Request, path strin
 		ctx = context.Background()
 	}
 
+	// Get site settings (may vary per request)
+	siteSettings := s.siteSettings
+	if s.siteSettingsProvider != nil {
+		siteSettings = s.siteSettingsProvider(r, s.siteSettings)
+	}
+
 	l.Debug("Getting content from content server")
 	content, err := s.contentServerClient.GetContent(ctx, &requests.Content{
 		URI:   path,
-		Env:   s.siteSettings.Env,
+		Env:   siteSettings.Env,
 		Nodes: map[string]*requests.Node{},
 	})
 
@@ -118,7 +129,7 @@ func (s *service) GetDocument(w http.ResponseWriter, r *http.Request, path strin
 			continue
 		}
 		l.Debug("Scraping breadcrumb item", zap.String("uri", item.URI), zap.Int("index", i))
-		summary, _, err := scrape.Scrape(ctx, s.httpClient, s.siteSettings.BaseURL+item.URI, s.siteSettings.ContentSelector)
+		summary, _, err := scrape.Scrape(ctx, s.httpClient, siteSettings.BaseURL+item.URI, siteSettings.ContentSelector)
 		if err != nil {
 			l.Error("Failed to scrape breadcrumb item", zap.String("uri", item.URI), zap.Error(err))
 			return nil, err
@@ -127,8 +138,8 @@ func (s *service) GetDocument(w http.ResponseWriter, r *http.Request, path strin
 		breadcrump[len(content.Path)-i-1] = *summary
 	}
 
-	l.Debug("Scraping main document", zap.String("url", s.siteSettings.BaseURL+path))
-	summary, markdown, err := scrape.Scrape(ctx, s.httpClient, s.siteSettings.BaseURL+path, s.siteSettings.ContentSelector)
+	l.Debug("Scraping main document", zap.String("url", siteSettings.BaseURL+path))
+	summary, markdown, err := scrape.Scrape(ctx, s.httpClient, siteSettings.BaseURL+path, siteSettings.ContentSelector)
 	if err != nil {
 		l.Error("Failed to scrape main document", zap.Error(err))
 		return nil, err
@@ -138,7 +149,7 @@ func (s *service) GetDocument(w http.ResponseWriter, r *http.Request, path strin
 	contentScraper, ok := s.contentScrapers[vo.MimeType(content.MimeType)]
 	if ok {
 		l.Debug("Applying content scraper", zap.String("mimeType", content.MimeType))
-		markdown, err = contentScraper(ctx, s.httpClient, s.siteSettings, content)
+		markdown, err = contentScraper(ctx, s.httpClient, siteSettings, content)
 		if err != nil {
 			l.Error("Content scraper failed", zap.String("mimeType", content.MimeType), zap.Error(err))
 			return nil, err
@@ -148,7 +159,7 @@ func (s *service) GetDocument(w http.ResponseWriter, r *http.Request, path strin
 		l.Debug("No content scraper found for mime type", zap.String("mimeType", content.MimeType))
 	}
 
-	s.loadItemData(summary, content.Item)
+	loadItemData(summary, content.Item, siteSettings.BaseURL)
 	doc := &vo.Document{
 		DocumentSummary: *summary,
 		Breadcrump:      breadcrump,
@@ -159,10 +170,10 @@ func (s *service) GetDocument(w http.ResponseWriter, r *http.Request, path strin
 	if len(content.Path) > 0 {
 		l.Debug("Processing siblings", zap.String("parentID", content.Path[0].ID))
 		parent := content.Path[0]
-		nodes, err := s.contentServerClient.GetNodes(ctx, s.siteSettings.Env, map[string]*requests.Node{
+		nodes, err := s.contentServerClient.GetNodes(ctx, siteSettings.Env, map[string]*requests.Node{
 			parent.ID: {
 				ID:        parent.ID,
-				MimeTypes: s.siteSettings.mimeTypes(),
+				MimeTypes: siteSettings.mimeTypes(),
 			},
 		})
 		if err != nil {
@@ -194,12 +205,12 @@ func (s *service) GetDocument(w http.ResponseWriter, r *http.Request, path strin
 			}
 
 			l.Debug("Scraping sibling", zap.String("uri", siblingNode.Item.URI), zap.Bool("isPrevious", isPrevious))
-			siblingSummary, _, err := scrape.Scrape(ctx, s.httpClient, s.siteSettings.BaseURL+siblingNode.Item.URI, s.siteSettings.ContentSelector)
+			siblingSummary, _, err := scrape.Scrape(ctx, s.httpClient, siteSettings.BaseURL+siblingNode.Item.URI, siteSettings.ContentSelector)
 			if err != nil {
 				l.Error("Failed to scrape sibling", zap.String("uri", siblingNode.Item.URI), zap.Error(err))
 				return nil, err
 			}
-			s.loadItemData(siblingSummary, siblingNode.Item)
+			loadItemData(siblingSummary, siblingNode.Item, siteSettings.BaseURL)
 			if isPrevious {
 				doc.PrevSiblings = append(doc.PrevSiblings, *siblingSummary)
 			} else {
@@ -210,10 +221,10 @@ func (s *service) GetDocument(w http.ResponseWriter, r *http.Request, path strin
 	}
 
 	l.Debug("Getting child nodes", zap.String("itemID", content.Item.ID))
-	nodes, err := s.contentServerClient.GetNodes(ctx, s.siteSettings.Env, map[string]*requests.Node{
+	nodes, err := s.contentServerClient.GetNodes(ctx, siteSettings.Env, map[string]*requests.Node{
 		content.Item.ID: {
 			ID:        content.Item.ID,
-			MimeTypes: s.siteSettings.mimeTypes(),
+			MimeTypes: siteSettings.mimeTypes(),
 		},
 	})
 	if err != nil {
@@ -235,12 +246,12 @@ func (s *service) GetDocument(w http.ResponseWriter, r *http.Request, path strin
 			return nil, errors.New("child node not found")
 		}
 		l.Debug("Scraping child", zap.String("uri", childNode.Item.URI))
-		childSummary, _, err := scrape.Scrape(ctx, s.httpClient, s.siteSettings.BaseURL+childNode.Item.URI, s.siteSettings.ContentSelector)
+		childSummary, _, err := scrape.Scrape(ctx, s.httpClient, siteSettings.BaseURL+childNode.Item.URI, siteSettings.ContentSelector)
 		if err != nil {
 			l.Error("Failed to scrape child", zap.String("uri", childNode.Item.URI), zap.Error(err))
 			return nil, err
 		}
-		s.loadItemData(childSummary, childNode.Item)
+		loadItemData(childSummary, childNode.Item, siteSettings.BaseURL)
 		doc.Children = append(doc.Children, *childSummary)
 	}
 
@@ -253,9 +264,9 @@ func (s *service) GetDocument(w http.ResponseWriter, r *http.Request, path strin
 	return doc, nil
 }
 
-func (s *service) loadItemData(d *vo.DocumentSummary, item *content.Item) {
+func loadItemData(d *vo.DocumentSummary, item *content.Item, baseURL string) {
 	d.MimeType = vo.MimeType(item.MimeType)
 	d.ID = item.ID
 	d.ContentSummary.Name = item.Name
-	d.URL = s.siteSettings.BaseURL + item.URI
+	d.URL = baseURL + item.URI
 }

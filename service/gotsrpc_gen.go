@@ -60,12 +60,15 @@ func (p *SiteContextServiceGoTSRPCProxy) ServeHTTP(w http.ResponseWriter, r *htt
 			return
 		}
 		executionStart := time.Now()
-		getContextRet, getContextRet_1 := p.service.GetContext(arg_path)
+		rw := gotsrpc.ResponseWriter{ResponseWriter: w}
+		getContextRet, getContextRet_1 := p.service.GetContext(&rw, r, arg_path)
 		callStats.Execution = time.Since(executionStart)
-		rets = []interface{}{getContextRet, getContextRet_1}
-		if err := gotsrpc.Reply(rets, callStats, r, w); err != nil {
-			gotsrpc.ErrorCouldNotReply(w)
-			return
+		if rw.Status() == http.StatusOK {
+			rets = []interface{}{getContextRet, getContextRet_1}
+			if err := gotsrpc.Reply(rets, callStats, r, w); err != nil {
+				gotsrpc.ErrorCouldNotReply(w)
+				return
+			}
 		}
 		gotsrpc.Monitor(w, r, args, rets, callStats)
 		return
