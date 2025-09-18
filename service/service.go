@@ -107,17 +107,23 @@ func (s *service) GetDocument(w http.ResponseWriter, r *http.Request, path strin
 		siteSettings = s.siteSettingsProvider(r, s.siteSettings)
 	}
 
-	l.Debug("Getting content from content server")
+	l.Debug("Getting content from content server", zap.Any("settings", siteSettings))
 	content, err := s.contentServerClient.GetContent(ctx, &requests.Content{
 		URI:   path,
 		Env:   siteSettings.Env,
 		Nodes: map[string]*requests.Node{},
 	})
-
 	if err != nil {
 		l.Error("Failed to get content from content server", zap.Error(err))
 		return nil, err
+	} else if content == nil || content.Item == nil {
+		l.Error("Content or content item is nil")
+		return nil, errors.New("content not found")
+	} else if !isValidURI(content.Item.URI) {
+		l.Error("Content item has invalid URI", zap.String("uri", content.Item.URI))
+		return nil, errors.New("content item has invalid URI")
 	}
+
 	l.Debug("Content retrieved successfully", zap.String("mimeType", content.MimeType), zap.String("itemID", content.Item.ID))
 
 	breadcrump := make([]vo.DocumentSummary, len(content.Path))
