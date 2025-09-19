@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/foomo/gotsrpc/refs/heads/main/gotsrpc.schema.json
 # define go module mode
 module:
   name: github.com/foomo/contentserver-mcp
@@ -15,7 +16,7 @@ targets:
       /service/sitecontextprovider: SiteContextService
     # go package
     package: github.com/foomo/contentserver-mcp/service
-    # target file for TypeScript client generation    
+    # target file for TypeScript client generation
     # which services should be generated in the (go)TypeScript RPC flavor
     tsrpc:
       - Service

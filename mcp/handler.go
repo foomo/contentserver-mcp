@@ -87,6 +87,17 @@ func getScrapeHandler(client *http.Client) func(ctx context.Context, request mcp
 			return mcp.NewToolResultError("selector is required"), nil
 		}
 
+		// Example: Access the original HTTP request from context
+		if originalReq, ok := httpRequestFromContext(ctx); ok {
+			// You can now access the original request headers, user agent, etc.
+			// For example, you could forward the user agent from the original request:
+			userAgent := originalReq.Header.Get("User-Agent")
+			if userAgent != "" {
+				// Use the original user agent for scraping
+				// This is just an example - you'd need to modify the scrape function to accept headers
+			}
+		}
+
 		// Call the scrape function
 		summary, markdown, err := scrape.Scrape(ctx, client, args.URL, args.Selector)
 		if err != nil {
@@ -117,14 +128,19 @@ func getDocumentHandler(serviceInstance service.Service) func(ctx context.Contex
 			return mcp.NewToolResultError("path is required"), nil
 		}
 
-		// Create a mock HTTP request with the context
-		req, err := http.NewRequestWithContext(ctx, "GET", "/", nil)
-		if err != nil {
-			return mcp.NewToolResultError(fmt.Sprintf("failed to create request: %v", err)), nil
+		// Get the original HTTP request from context
+		originalReq, ok := httpRequestFromContext(ctx)
+		if !ok {
+			// Fallback to creating a new request if original is not available
+			req, err := http.NewRequestWithContext(ctx, "GET", "/", nil)
+			if err != nil {
+				return mcp.NewToolResultError(fmt.Sprintf("failed to create request: %v", err)), nil
+			}
+			originalReq = req
 		}
 
-		// Call the service to get the document
-		document, err := serviceInstance.GetDocument(nil, req, args.Path)
+		// Call the service to get the document with the original request
+		document, err := serviceInstance.GetDocument(nil, originalReq, args.Path)
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("failed to get document: %v", err)), nil
 		}
